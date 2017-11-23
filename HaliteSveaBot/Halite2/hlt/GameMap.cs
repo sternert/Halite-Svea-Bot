@@ -57,6 +57,11 @@ namespace Halite2.hlt {
             return planets;
         }
 
+        public List<Planet> GetAllNotFullNotOwnedByUsPlanets(int playerId)
+        {
+            return planets.Values.Where(planet => !planet.IsOwnedByOther(playerId) && !planet.IsFull()).ToList();
+        }
+
         public IList<Ship> GetAllShips() {
             return allShipsUnmodifiable;
         }

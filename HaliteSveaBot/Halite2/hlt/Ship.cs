@@ -55,5 +55,10 @@ namespace Halite2.hlt
                     ", weaponCooldown=" + weaponCooldown +
                     "]";
         }
+
+        public Position GetClosestPosition()
+        {
+            return new Position(GetXPos(), GetYPos());
+        }
     }
 }

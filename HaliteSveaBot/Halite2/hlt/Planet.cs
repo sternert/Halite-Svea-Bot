@@ -20,6 +20,7 @@ namespace Halite2.hlt {
         }
 
         public int RemainingProduction => remainingProduction;
+        public int BookedCount = 0;
 
         public int GetCurrentProduction() {
             return currentProduction;
@@ -40,7 +41,12 @@ namespace Halite2.hlt {
         public bool IsOwned() {
             return GetOwner() != -1;
         }
-        
+
+        public bool IsOwnedByOther(int playerId)
+        {
+            return GetOwner() != playerId && GetOwner() != -1;
+        }
+
         public override string ToString() {
             return "Planet[" +
                     base.ToString() +
@@ -49,6 +55,21 @@ namespace Halite2.hlt {
                     ", dockingSpots=" + dockingSpots +
                     ", dockedShips=" + dockedShips +
                     "]";
+        }
+
+        public Position GetClosestPositionTo(Ship availableShip)
+        {
+            return GetClosestPoint(availableShip.GetClosestPosition());
+        }
+
+        public Position GetCenterPosition()
+        {
+            return new Position(GetXPos(), GetYPos());
+        }
+
+        public bool IsFullyBooked()
+        {
+            return dockedShips.Count + BookedCount >= dockingSpots;
         }
     }
 }
