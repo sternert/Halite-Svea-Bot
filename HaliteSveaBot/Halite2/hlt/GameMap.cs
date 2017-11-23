@@ -57,7 +57,7 @@ namespace Halite2.hlt {
             return planets;
         }
 
-        public List<Planet> GetAllNotFullNotOwnedByUsPlanets(int playerId)
+        public List<Planet> GetAllNotFullNotOwnedByOtherPlanets(int playerId)
         {
             return planets.Values.Where(planet => !planet.IsOwnedByOther(playerId) && !planet.IsFull()).ToList();
         }
@@ -145,6 +145,11 @@ namespace Halite2.hlt {
             }
 
             return this;
+        }
+
+        public IEnumerable<Planet> GetAllOwnedByOthers(int playerId)
+        {
+            return planets.Values.Where(planet => planet.IsOwnedByOther(playerId)).ToList();
         }
     }
 

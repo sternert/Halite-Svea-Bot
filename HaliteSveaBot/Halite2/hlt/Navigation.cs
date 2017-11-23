@@ -16,17 +16,34 @@ namespace Halite2.hlt
             double angularStepRad = Math.PI / 180.0;
             Position targetPos = ship.GetClosestPoint(dockTarget);
 
-            return NavigateShipTowardsTarget(gameMap, ship, targetPos, maxThrust, avoidObstacles, maxCorrections, angularStepRad);
+            return NavigateShipTowardsTarget(gameMap, ship, targetPos, false, maxThrust, avoidObstacles, maxCorrections, angularStepRad);
+        }
+
+        public static ThrustMove CrashInPlanet(
+            GameMap gameMap,
+            Ship ship,
+            Planet crashTarget,
+            int maxThrust,
+            int playerId)
+        {
+            int maxCorrections = Constants.MAX_NAVIGATION_CORRECTIONS;
+            bool avoidObstacles = true;
+            double angularStepRad = Math.PI / 180.0;
+            Position targetPos = crashTarget.GetCenterPosition();
+
+            return NavigateShipTowardsTarget(gameMap, ship, targetPos, true, maxThrust, avoidObstacles, maxCorrections, angularStepRad, playerId);
         }
 
         public static ThrustMove NavigateShipTowardsTarget(
                 GameMap gameMap,
                 Ship ship,
                 Position targetPos,
+                bool crash,
                 int maxThrust,
                 bool avoidObstacles,
                 int maxCorrections,
-                double angularStepRad)
+                double angularStepRad,
+                int playerId = -2)
         {
             if (maxCorrections <= 0)
             {
@@ -35,18 +52,18 @@ namespace Halite2.hlt
 
             double distance = ship.GetDistanceTo(targetPos);
             double angleRad = ship.OrientTowardsInRad(targetPos);
-
-            if (avoidObstacles && gameMap.ObjectsBetween(ship, targetPos).Any())
+            var objectsBetween = crash ? gameMap.ObjectsBetween(ship, targetPos).Any(x => x.GetOwner() == playerId) : gameMap.ObjectsBetween(ship, targetPos).Any();
+            if (avoidObstacles && objectsBetween)
             {
                 double newTargetDx = Math.Cos(angleRad + angularStepRad) * distance;
                 double newTargetDy = Math.Sin(angleRad + angularStepRad) * distance;
                 Position newTarget = new Position(ship.GetXPos() + newTargetDx, ship.GetYPos() + newTargetDy);
 
-                return NavigateShipTowardsTarget(gameMap, ship, newTarget, maxThrust, true, (maxCorrections - 1), angularStepRad);
+                return NavigateShipTowardsTarget(gameMap, ship, newTarget, crash, maxThrust, true, (maxCorrections - 1), angularStepRad, playerId);
             }
 
             int thrust;
-            if (distance < maxThrust)
+            if (distance < maxThrust && !crash)
             {
                 // Do not round up, since overshooting might cause collision.
                 thrust = (int)distance;
