@@ -11,7 +11,7 @@ namespace Halite2
 
         public static void Main(string[] args)
         {
-            string name = args.Length > 0 ? args[0] : "KamikazeGurazuhopa";
+            string name = args.Length > 0 ? args[0] : "ExpandDefendAttack";
 
             _networking = new Networking();
             _gameMap = _networking.Initialize(name);
@@ -35,56 +35,89 @@ namespace Halite2
             var availableShips = ships.Where(ship => ship.GetDockingStatus() == Ship.DockingStatus.Undocked)
                 .ToList();
 
-            var explorerMoves = Explore(availableShips);
+            var ownedAreaCenter = CalculateOwnedAreaCenter();
+
+            var explorerMoves = Expand(availableShips);
             var defenseMoves = new List<Move>();
             if (_gameMap.GetAllPlayers().Count > 2)
             {
                 defenseMoves = StaffansStupidDefenseStrategy(availableShips);
             }
-            var attackMoves = StaffanCrazyStrategy(availableShips);
-
+            var attackMoves = TorCrazyStrategy(availableShips, GetTargetPlanet(ownedAreaCenter));
 
             return explorerMoves.Concat(defenseMoves).Concat(attackMoves);
         }
 
         private List<Move> StaffansStupidDefenseStrategy(List<Ship> availableShips)
         {
+            var defendMoves = new List<Move>();
             var defenders = availableShips.OrderByDescending(x => x.GetId()).Take(availableShips.Count / 2);
+            var enemyShips = _gameMap.GetAllShips().Where(ship => ship.GetOwner() != _gameMap.GetMyPlayerId()).ToList();
             foreach (var defender in defenders)
+            {
+                Ship closestEnemy = null;
+                var closestDistance = 1e9;
+                foreach (var enemyShip in enemyShips)
+                {
+                    var enemyDistance = defender.GetDistanceTo(enemyShip.GetClosestPosition());
+                    if (enemyDistance < closestDistance)
+                    {
+                        closestDistance = enemyDistance;
+                        closestEnemy = enemyShip;
+                    }
+                }
+                if (closestEnemy != null)
+                {
+                    var shipMaxSpeed = closestDistance < 50 ? 3 : Constants.MAX_SPEED;
+                    var attackMove = Navigation.AttackShip(_gameMap, defender, closestEnemy, shipMaxSpeed, _gameMap.GetMyPlayerId());
+                    defendMoves.Add(attackMove);
+                }
                 availableShips.Remove(defender);
-            return new List<Move>();
+            }
+            return defendMoves;
         }
 
-        private Planet GetTargetPlanet()
+        private Planet GetTargetPlanet(Position ownedAreaCenter)
         {
             var playerId = _gameMap.GetMyPlayer().GetId();
-            var targetPlanet = _gameMap.GetAllOwnedByOthers(playerId).OrderBy(x => x.GetHealth()).FirstOrDefault();
-
+            var targetPlanet = _gameMap.GetAllOwnedByOthers(playerId).OrderBy(planet => planet.GetDistanceTo(ownedAreaCenter)).FirstOrDefault();
             return targetPlanet;
         }
 
-        private IEnumerable<Move> StaffanCrazyStrategy(List<Ship> availableShips)
+        private IEnumerable<Move> TorCrazyStrategy(List<Ship> availableShips, Planet targetPlanet)
         {
             var moves = new List<Move>();
             var playerId = _gameMap.GetMyPlayer().GetId();
-            if (availableShips.Count < 10)
-                return moves;
+            //if (availableShips.Count < 10)
+            //    return moves;
 
-            var targetPlanet = GetTargetPlanet();
             if (targetPlanet == null)
                 return moves;
 
-            foreach (var ship in availableShips.Take(35))
+            foreach (var ship in availableShips.Take(50))
             {
-                var crashMove = Navigation.CrashInPlanet(_gameMap, ship, targetPlanet, Constants.MAX_SPEED, playerId);
-                if (crashMove != null)
-                    moves.Add(crashMove);
+                Ship targetDockedShip = null;
+                var closestDistance = 1e9;
+                foreach (var dockedShipId in targetPlanet.GetDockedShips())
+                {
+                    var dockedShip = _gameMap.GetShip(targetPlanet.GetOwner(), dockedShipId);
+                    var dockedShipDistance = ship.GetDistanceTo(dockedShip.GetClosestPosition());
+                    if (dockedShipDistance < closestDistance)
+                    {
+                        closestDistance = dockedShipDistance;
+                        targetDockedShip = dockedShip;
+                    }
+                }
+                var shipMaxSpeed = closestDistance < 50 ? 3 : Constants.MAX_SPEED;
+                var attackMove = Navigation.AttackShip(_gameMap, ship, targetDockedShip, shipMaxSpeed, playerId);
+                if (attackMove != null)
+                    moves.Add(attackMove);
             }
 
             return moves;
         }
 
-        private IEnumerable<Move> Explore(IList<Ship> availableShips)
+        private IEnumerable<Move> Expand(IList<Ship> availableShips)
         {
 
             var notOwnedPlanets = _gameMap.GetAllNotFullNotOwnedByOtherPlanets(_gameMap.GetMyPlayer().GetId());
@@ -124,8 +157,8 @@ namespace Halite2
                 }
 
                 var bestGlobalPlanetShipDistance = planetShipDistances
-                    .OrderBy(planetShipDistance => planetShipDistance.Planet.GetId() < 4 ? 1 : 2)
-                    .ThenBy(planetShipDistance => planetShipDistance.Distance).First();
+                    //.OrderBy(planetShipDistance => planetShipDistance.Planet.GetId() < 4 ? 1 : 2)
+                    .OrderBy(planetShipDistance => planetShipDistance.Distance).First();
 
                 bestGlobalPlanetShipDistance.Planet.BookedCount++;
                 if (bestGlobalPlanetShipDistance.Planet.IsFullyBooked())
@@ -144,6 +177,18 @@ namespace Halite2
             return moveList;
         }
 
+        private static Position CalculateOwnedAreaCenter()
+        {
+            var allOwnedPlanets = _gameMap.GetAllPlanets().Values.Where(planet => planet.GetOwner() == _gameMap.GetMyPlayerId());
+            if (!allOwnedPlanets.Any())
+            {
+                return new Position(0, 0);
+            }
+            var centerX = allOwnedPlanets.Select(planet => planet.GetXPos()).Sum() / allOwnedPlanets.Count();
+            var centerY = allOwnedPlanets.Select(planet => planet.GetYPos()).Sum() / allOwnedPlanets.Count();
+            return new Position(centerX, centerY);
+        }
+
         private Move MoveOrDockShipToPlanet(PlanetShipDistance bestPlanetShipDistance)
         {
             var ship = bestPlanetShipDistance.Ship;
@@ -154,7 +199,7 @@ namespace Halite2
                 return new DockMove(ship, planet);
             }
 
-            ThrustMove newThrustMove = Navigation.NavigateShipToDock(_gameMap, ship, planet, Constants.MAX_SPEED);
+            ThrustMove newThrustMove = Navigation.NavigateShipToDock(_gameMap, ship, planet, Constants.MAX_SPEED, _gameMap.GetMyPlayerId());
             
             return newThrustMove;
         }
