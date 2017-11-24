@@ -11,7 +11,7 @@ namespace Halite2
 
         public static void Main(string[] args)
         {
-            string name = args.Length > 0 ? args[0] : "Grasshopper1";
+            string name = args.Length > 0 ? args[0] : "KamikazeGurazuhopa";
 
             _networking = new Networking();
             _gameMap = _networking.Initialize(name);
@@ -36,11 +36,15 @@ namespace Halite2
                 .ToList();
 
             var explorerMoves = Explore(availableShips);
-            //var defenseMoves = StaffansStupidDefenseStrategy(availableShips);
+            var defenseMoves = new List<Move>();
+            if (_gameMap.GetAllPlayers().Count > 2)
+            {
+                defenseMoves = StaffansStupidDefenseStrategy(availableShips);
+            }
             var attackMoves = StaffanCrazyStrategy(availableShips);
 
 
-            return explorerMoves.Concat(attackMoves); //Concat(defenseMoves).Concat(attackMoves);
+            return explorerMoves.Concat(defenseMoves).Concat(attackMoves);
         }
 
         private List<Move> StaffansStupidDefenseStrategy(List<Ship> availableShips)
@@ -119,7 +123,9 @@ namespace Halite2
                     planetShipDistances.Add(bestPlanetShipDistance);
                 }
 
-                var bestGlobalPlanetShipDistance = planetShipDistances.OrderBy(planetShipDistance => planetShipDistance.Distance).First();
+                var bestGlobalPlanetShipDistance = planetShipDistances
+                    .OrderBy(planetShipDistance => planetShipDistance.Planet.GetId() < 4 ? 1 : 2)
+                    .ThenBy(planetShipDistance => planetShipDistance.Distance).First();
 
                 bestGlobalPlanetShipDistance.Planet.BookedCount++;
                 if (bestGlobalPlanetShipDistance.Planet.IsFullyBooked())

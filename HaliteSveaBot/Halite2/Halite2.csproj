@@ -90,5 +90,11 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="PostBuild.ps1" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -file $(solutionDir)Halite2\PostBuild.ps1</PostBuildEvent>
+  </PropertyGroup>
 </Project>
