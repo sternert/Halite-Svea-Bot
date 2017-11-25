@@ -12,6 +12,7 @@ namespace Halite2.hlt {
         private Dictionary<int, Planet> planets;
         private List<Ship> allShips;
         private IList<Ship> allShipsUnmodifiable;
+        private Position _ownedAreaCenter;
 
         // used only during parsing to reduce memory allocations
         private List<Ship> currentShips = new List<Ship>();
@@ -26,6 +27,21 @@ namespace Halite2.hlt {
             allShips = new List<Ship>();
             allShipsUnmodifiable = allShips.AsReadOnly();
         }
+
+
+        public Position OwnedAreaCenter {
+            get
+            {
+                if (_ownedAreaCenter != null)
+                {
+                    return _ownedAreaCenter;
+                }
+                else
+                {
+                    _ownedAreaCenter = CalculateOwnedAreaCenter();
+                    return _ownedAreaCenter;
+                }
+            }}
 
         public int GetHeight() {
             return height;
@@ -115,6 +131,7 @@ namespace Halite2.hlt {
             players.Clear();
             planets.Clear();
             allShips.Clear();
+            _ownedAreaCenter = null;
 
             // update players info
             for (int i = 0; i < numberOfPlayers; ++i) {
@@ -150,6 +167,19 @@ namespace Halite2.hlt {
         public IEnumerable<Planet> GetAllOwnedByOthers(int playerId)
         {
             return planets.Values.Where(planet => planet.IsOwnedByOther(playerId)).ToList();
+        }
+
+
+        private Position CalculateOwnedAreaCenter()
+        {
+            var allOwnedPlanets = GetAllPlanets().Values.Where(planet => planet.GetOwner() == GetMyPlayerId()).ToList();
+            if (!allOwnedPlanets.Any())
+            {
+                return new Position(0, 0);
+            }
+            var centerX = allOwnedPlanets.Select(planet => planet.GetXPos()).Sum() / allOwnedPlanets.Count();
+            var centerY = allOwnedPlanets.Select(planet => planet.GetYPos()).Sum() / allOwnedPlanets.Count();
+            return new Position(centerX, centerY);
         }
     }
 

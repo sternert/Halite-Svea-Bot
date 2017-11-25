@@ -300,3 +300,7 @@ __pycache__/
 *.hlt
 *.exe
 *.zip
+*.exe
+*.exe
+BattleGround/ReleaseBots/HaliteSveaBot.exe
+*.zip
